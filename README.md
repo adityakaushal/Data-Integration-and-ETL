@@ -8,6 +8,12 @@ Built a capstone project on ETL Designing and Data Ingestion using Microsoft Azu
 Utilized SQL queries to accumulate data from different sources and maintained a query to ingest data from these sources. 
 Also, mapped, derived, collected, and used dataflows, pipelines to build the ETL.
 
+![Alt Text](https://github.com/adityakaushal/Data-Integration-and-ETL/blob/main/pic2.jpeg)
+
 Practically handled the Dimension Tables and the Fact Table with the help of Surrogate Keys, Natural Keys, Primary Keys, Foreign Keys.
 
+![Alt Text](https://github.com/adityakaushal/Data-Integration-and-ETL/blob/main/pic3.jpeg)
+
 Explored different components of Azure Data Factory like Data flows, Copy Data activities, Pipelines, Data Bricks, and many more.
+
+![Alt Text](https://github.com/adityakaushal/Data-Integration-and-ETL/blob/main/pic4.jpeg)
