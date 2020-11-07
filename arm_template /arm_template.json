@@ -1,0 +1,3393 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "AdityaKaushalADVWorksADF"
+        },
+        "AzureSqlDatabase2_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase2'"
+        },
+        "AzureDataLakeStorage1_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage1'"
+        },
+        "AzureSqlDatabase1_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase1'"
+        },
+        "AzureDataLakeStorage2_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage2'"
+        },
+        "AzureSqlDatabase3_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase3'"
+        },
+        "AzureSqlDatabase4_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase4'"
+        },
+        "AzureSqlDatabase5_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase5'"
+        },
+        "AzureDataLakeStorage3_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage3'"
+        },
+        "AdventureWorks_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AdventureWorks'"
+        },
+        "AzureDataLakeStorage1_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://adityakaushaladlsg98.dfs.core.windows.net"
+        },
+        "AzureDataLakeStorage2_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://adityakaushaladlsg98.dfs.core.windows.net"
+        },
+        "AzureDataLakeStorage3_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://adityakaushaladlsg98.dfs.core.windows.net"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/FactInternetSales')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "FactTable",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactSalesDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "SalesOrderDetails": {},
+                                    "SalesOrderHeader": {},
+                                    "FactTableSourceDW": {},
+                                    "ProductionTable": {},
+                                    "FactStage": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "FactDWProcessed",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "FactTable",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactinternetDWProcessed",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "CSVFactStagedFile": {},
+                                    "FactInternetDW": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "FactProcessFolder",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "FactDWProcessed",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactProcessedFolder",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "Fact": {},
+                                    "FactInternetSalesProcessed": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-01T18:42:54Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/FactSalesDF')]",
+                "[concat(variables('factoryId'), '/dataflows/FactinternetDWProcessed')]",
+                "[concat(variables('factoryId'), '/dataflows/FactProcessedFolder')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimCustomer')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "CustomerDimension",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "DimCustomerDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "SalesCustomer": {},
+                                    "SalesVCustomer": {},
+                                    "SalesDemo": {},
+                                    "DimCustStageCsv": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "UpsertCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "CustomerDimension",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "UpsertCustomer",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "DimCustomerCSv": {},
+                                    "dboCustomer": {},
+                                    "dboCustomerDW": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ProcessedCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "UpsertCustomer",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "ProcessedCustomer",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "StageCustomer": {},
+                                    "ProcessedCustomer": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-02T09:24:00Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/DimCustomerDF')]",
+                "[concat(variables('factoryId'), '/dataflows/UpsertCustomer')]",
+                "[concat(variables('factoryId'), '/dataflows/ProcessedCustomer')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimProducts')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "ProductsDimension",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "DimProductDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "Product": {},
+                                    "ProductDescription": {},
+                                    "DimProductsCSV": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "UpsertProduct",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "ProductsDimension",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "UpsertProduct",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "DimProductsADW": {},
+                                    "DimProductStaged": {},
+                                    "ProductSink": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ProcessedCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "UpsertProduct",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "ProductProcessed",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "StageCSVProduct": {},
+                                    "ProcessedProduct": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-02T09:24:00Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/DimProductDF')]",
+                "[concat(variables('factoryId'), '/dataflows/UpsertProduct')]",
+                "[concat(variables('factoryId'), '/dataflows/ProductProcessed')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlDatabase2')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSqlDatabase2_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage1')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('AzureDataLakeStorage1_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlDatabase1')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSqlDatabase1_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage2')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorage2_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('AzureDataLakeStorage2_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlDatabase3')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSqlDatabase3_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlDatabase4')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSqlDatabase4_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlDatabase5')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSqlDatabase5_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage3')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorage3_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('AzureDataLakeStorage3_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AdventureWorks')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AdventureWorks_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable15')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase2",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "EnglishProductName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeRange",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "DealerPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ModelName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EnglishDescription",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "FactInternetSales"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase2')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable1')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase1",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "SalesOrderDetail"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable2')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase1",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "BusinessEntityID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Title",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PhoneNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PhoneNumberType",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailPromotion",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "AddressType",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "City",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StateProvinceName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PostalCode",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "CountryRegionName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Demographics",
+                        "type": "xml"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "vIndividualCustomer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable10')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase1",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Name",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductModel",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "CultureID",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Description",
+                        "type": "nvarchar"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "SalesOrderHeader"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactInternetSalesDelimitedText')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage2",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "folderPath": "Staging",
+                        "fileSystem": "adlsgen2"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage2')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable19')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "EnglishProductName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeRange",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "DealerPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ModelName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EnglishDescription",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "DimProduct"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactTableStage')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProductDescription')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductDescriptionID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Description",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "rowguid",
+                        "type": "uniqueidentifier"
+                    },
+                    {
+                        "name": "ModifiedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Production",
+                    "table": "vProductAndDescription"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProductTable')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "EnglishProductName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeRange",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "DealerPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ModelName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EnglishDescription",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "DimProduct"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StageProductCSV')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Products')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Name",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MakeFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "decimal",
+                        "precision": 8,
+                        "scale": 2
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductModelID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "SellStartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "SellEndDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "DiscontinuedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "rowguid",
+                        "type": "uniqueidentifier"
+                    },
+                    {
+                        "name": "ModifiedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Production",
+                    "table": "Product"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SalesCustomer')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "CustomerID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "PersonID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "StoreID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "TerritoryID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "AccountNumber",
+                        "type": "varchar"
+                    },
+                    {
+                        "name": "rowguid",
+                        "type": "uniqueidentifier"
+                    },
+                    {
+                        "name": "ModifiedDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "Customer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SalesV')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "BusinessEntityID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Title",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PhoneNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PhoneNumberType",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailPromotion",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "AddressType",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "City",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StateProvinceName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "PostalCode",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "CountryRegionName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Demographics",
+                        "type": "xml"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "vIndividualCustomer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/SalesStageCSV')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Demographics')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "BusinessEntityID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "TotalPurchaseYTD",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "DateFirstPurchase",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "TotalChildren",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "NumberChildrenAtHome",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Education",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Occupation",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "HomeOwnerFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "NumberCarsOwned",
+                        "type": "int",
+                        "precision": 10
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "Sales",
+                    "table": "vPersonDemographics"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StagedCSVFact')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AdventureWorks2019Products')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AdventureWorks",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [],
+                "typeProperties": {
+                    "schema": "Production",
+                    "table": "Product"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AdventureWorks')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactInternetSalesDW')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "OrderDateKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "DueDateKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ShipDateKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "CustomerKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "SalesOrderNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SalesOrderLineNumber",
+                        "type": "tinyint",
+                        "precision": 3
+                    },
+                    {
+                        "name": "RevisionNumber",
+                        "type": "tinyint",
+                        "precision": 3
+                    },
+                    {
+                        "name": "OrderQuantity",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "UnitPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "ExtendedAmount",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "UnitPriceDiscountPct",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "DiscountAmount",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "ProductStandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "TotalProductCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "SalesAmount",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "TaxAmt",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Freight",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "CarrierTrackingNumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "CustomerPONumber",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "OrderDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "DueDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    },
+                    {
+                        "name": "ShipDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "FactInternetSales"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/dboCustomer')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "date"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "nvarchar"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "DimCustomer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimStaged')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/dboProduct')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "ProductKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "ProductSubcategoryKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "WeightUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "SizeUnitMeasureCode",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "EnglishProductName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StandardCost",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "FinishedGoodsFlag",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "Color",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SafetyStockLevel",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ReorderPoint",
+                        "type": "smallint",
+                        "precision": 5
+                    },
+                    {
+                        "name": "ListPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Size",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "SizeRange",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Weight",
+                        "type": "float",
+                        "precision": 15
+                    },
+                    {
+                        "name": "DaysToManufacture",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ProductLine",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "DealerPrice",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "Class",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Style",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "ModelName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EnglishDescription",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "StartDate",
+                        "type": "datetime",
+                        "precision": 23,
+                        "scale": 3
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "DimProduct"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/StagedCSVCustomer')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "staging"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/dimCustomer')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSqlDatabase5",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "bit"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "date"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "nchar"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "money",
+                        "precision": 19,
+                        "scale": 4
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "nvarchar"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "DimCustomer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase5')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProcessedFactInternetSales')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "processed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactInternetSales')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "processed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProcessedCSVProduct')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "processed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesOrderNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ProductID",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DueDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ShipDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesOrderLineNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "RevisionNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderQuantity",
+                        "type": "String"
+                    },
+                    {
+                        "name": "UnitPrice",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ExtendedAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "UnitPriceDiscountPct",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DiscountAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ProductStandardCost",
+                        "type": "String"
+                    },
+                    {
+                        "name": "TotalProductCost",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "TaxAmt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Freight",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CarrierTrackingNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerPONumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DueDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ShipDate",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProcessedProduct')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage3",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "processed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerAlternateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "NameStyle",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Title",
+                        "type": "String"
+                    },
+                    {
+                        "name": "FirstName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MiddleName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "LastName",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Suffix",
+                        "type": "String"
+                    },
+                    {
+                        "name": "EmailAddress",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Phone",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine1",
+                        "type": "String"
+                    },
+                    {
+                        "name": "AddressLine2",
+                        "type": "String"
+                    },
+                    {
+                        "name": "BirthDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "MaritalStatus",
+                        "type": "String"
+                    },
+                    {
+                        "name": "YearlyIncome",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Gender",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesOrderNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ProductID",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DueDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ShipDateKey",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesOrderLineNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "RevisionNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderQuantity",
+                        "type": "String"
+                    },
+                    {
+                        "name": "UnitPrice",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ExtendedAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "UnitPriceDiscountPct",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DiscountAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ProductStandardCost",
+                        "type": "String"
+                    },
+                    {
+                        "name": "TotalProductCost",
+                        "type": "String"
+                    },
+                    {
+                        "name": "SalesAmount",
+                        "type": "String"
+                    },
+                    {
+                        "name": "TaxAmt",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Freight",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CarrierTrackingNumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "CustomerPONumber",
+                        "type": "String"
+                    },
+                    {
+                        "name": "OrderDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "DueDate",
+                        "type": "String"
+                    },
+                    {
+                        "name": "ShipDate",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage3')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimProductDF')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "Products",
+                                "type": "DatasetReference"
+                            },
+                            "name": "Product"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "ProductDescription",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProductDescription"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "StageProductCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimProductsCSV"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "ProductAndDescription"
+                        },
+                        {
+                            "name": "CalculatedColumns"
+                        },
+                        {
+                            "name": "RequiredSelect"
+                        },
+                        {
+                            "name": "FilterNullColors"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tProductID as integer,\n\t\tProductNumber as string,\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tStandardCost as decimal(19,4),\n\t\tListPrice as decimal(19,4),\n\t\tSize as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tWeightUnitMeasureCode as string,\n\t\tWeight as decimal(8,2),\n\t\tDaysToManufacture as integer,\n\t\tProductLine as string,\n\t\tClass as string,\n\t\tStyle as string,\n\t\tProductSubcategoryID as integer,\n\t\tSellStartDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT [ProductID],\\n       [ProductNumber]\\n      ,[FinishedGoodsFlag]\\n      ,[Color]\\n      ,[SafetyStockLevel]\\n      ,[ReorderPoint]\\n      ,[StandardCost]\\n      ,[ListPrice]\\n      ,[Size]\\n      ,[SizeUnitMeasureCode]\\n      ,[WeightUnitMeasureCode]\\n      ,[Weight]\\n      ,[DaysToManufacture]\\n      ,[ProductLine]\\n      ,[Class]\\n      ,[Style]\\n      ,[ProductSubcategoryID]\\n      ,[SellStartDate]\\n  FROM [Production].[Product]',\n\tformat: 'query') ~> Product\nsource(output(\n\t\tProductID as integer,\n\t\tEnglishProductName as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT Distinct([ProductID])\\n      ,[Name] as \"EnglishProductName\"\\n      ,[ProductModel] as \"ModelName\"\\n      ,[Description] as \"EnglishDescription\"\\n  FROM [Production].[vProductAndDescription] where [CultureID] = \\'en\\' ',\n\tformat: 'query') ~> ProductDescription\nProduct, ProductDescription join(Product@ProductID == ProductDescription@ProductID,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> ProductAndDescription\nProductAndDescription derive(DealerPrice = 0.6*ListPrice,\n\t\tSizeRange = case(Size == 'M', 'M',\n    Size == 'S','S',\n    Size == 'L','L',\n    Size == 'XL', 'XL',\n    Size == '40', '38-40 CM',\n    Size == '38', '38-40 CM',\n    Size == '42', '42-46 CM',\n    Size == '44', '42-46 CM',\n    Size == '46', '42-26 CM',\n    Size == '48', '48-52 CM',\n    Size == '50', '48-52 CM',\n    Size == '52', '48-52 CM',\n    Size == '54', '54-58 CM',\n    Size == '56', '54-58 CM',\n    Size == '58', '54-58 CM',\n    Size == '60', '60-62 CM',\n    Size == '62', '60-62 CM',\n    Size == '70', '70')) ~> CalculatedColumns\nCalculatedColumns select(mapColumn(\n\t\tProductKey = Product@ProductID,\n\t\tProductAlternateKey = ProductNumber,\n\t\tProductSubcategoryKey = ProductSubcategoryID,\n\t\tWeightUnitMeasureCode,\n\t\tSizeUnitMeasureCode,\n\t\tEnglishProductName,\n\t\tStandardCost,\n\t\tFinishedGoodsFlag,\n\t\tColor,\n\t\tSafetyStockLevel,\n\t\tReorderPoint,\n\t\tListPrice,\n\t\tSize,\n\t\tSizeRange,\n\t\tWeight,\n\t\tDaysToManufacture,\n\t\tProductLine,\n\t\tDealerPrice,\n\t\tClass,\n\t\tStyle,\n\t\tModelName,\n\t\tEnglishDescription,\n\t\tStartDate = SellStartDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> RequiredSelect\nRequiredSelect filter(not(isNull(Color))) ~> FilterNullColors\nFilterNullColors sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[('DimProducts_'+toString(currentDate(),'ddMMYYYY')+'.csv')],\n\tpartitionBy('hash', 1),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> DimProductsCSV"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/Products')]",
+                "[concat(variables('factoryId'), '/datasets/ProductDescription')]",
+                "[concat(variables('factoryId'), '/datasets/StageProductCSV')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimCustomerDF')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "SalesCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SalesCustomer"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "SalesV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SalesVCustomer"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "Demographics",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SalesDemo"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "SalesStageCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimCustStageCsv"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "CustomerDemographics"
+                        },
+                        {
+                            "name": "SelectReqColumns"
+                        },
+                        {
+                            "name": "VCustomerAndCustDemo"
+                        },
+                        {
+                            "name": "SelectReq"
+                        },
+                        {
+                            "name": "NameStyle"
+                        },
+                        {
+                            "name": "FilterNullColors"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tBusinessEntityID as integer,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tPhoneNumber as string,\n\t\tEmailAddress as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT \\n[BusinessEntityID]\\n      ,[Title]\\n      ,[FirstName]\\n      ,[MiddleName]\\n      ,[LastName]\\n      ,[Suffix]\\n      ,[PhoneNumber]\\n      ,[EmailAddress]\\n      ,[AddressLine1]\\n      ,[AddressLine2]\\n  FROM [Sales].[vIndividualCustomer]',\n\tformat: 'query') ~> SalesCustomer\nsource(output(\n\t\tCustomerID as integer,\n\t\tAccountNumber as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT Distinct([CustomerID])\\n      ,[AccountNumber]\\n  FROM [Sales].[Customer]',\n\tformat: 'query') ~> SalesVCustomer\nsource(output(\n\t\tBusinessEntityID as integer,\n\t\tBirthDate as timestamp,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT [BusinessEntityID]\\n      ,[BirthDate]\\n      ,[MaritalStatus]\\n      ,[YearlyIncome]\\n      ,[Gender]\\n  FROM [Sales].[vPersonDemographics]',\n\tformat: 'query') ~> SalesDemo\nSalesCustomer, SalesDemo join(SalesCustomer@BusinessEntityID == SalesDemo@BusinessEntityID,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> CustomerDemographics\nCustomerDemographics select(mapColumn(\n\t\tBusinessEntityID = SalesCustomer@BusinessEntityID,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tSuffix,\n\t\tPhoneNumber,\n\t\tEmailAddress,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tBusinessEntityID = SalesDemo@BusinessEntityID,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tYearlyIncome,\n\t\tGender\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectReqColumns\nSelectReqColumns, SalesVCustomer join(BusinessEntityID == CustomerID,\n\tjoinType:'right',\n\tbroadcast: 'auto')~> VCustomerAndCustDemo\nNameStyle select(mapColumn(\n\t\tCustomerKey = CustomerID,\n\t\tCustomerAlternateKey = AccountNumber,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tNameStyle,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tSuffix,\n\t\tGender,\n\t\tEmailAddress,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tYearlyIncome,\n\t\tPhone = PhoneNumber\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectReq\nVCustomerAndCustDemo derive(NameStyle = toString(null())) ~> NameStyle\nSelectReq filter(not(isNull(CustomerKey))) ~> FilterNullColors\nFilterNullColors sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[('DimCustomer_'+toString(currentDate(),'ddMMYYYY')+'.csv')],\n\tpartitionBy('hash', 1),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> DimCustStageCsv"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/SalesCustomer')]",
+                "[concat(variables('factoryId'), '/datasets/SalesV')]",
+                "[concat(variables('factoryId'), '/datasets/Demographics')]",
+                "[concat(variables('factoryId'), '/datasets/SalesStageCSV')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactSalesDF')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable1",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SalesOrderDetails"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable10",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SalesOrderHeader"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable15",
+                                "type": "DatasetReference"
+                            },
+                            "name": "FactTableSourceDW"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "AdventureWorks2019Products",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProductionTable"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "FactTableStage",
+                                "type": "DatasetReference"
+                            },
+                            "name": "FactStage"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "joinDetailHeader"
+                        },
+                        {
+                            "name": "AddedCalculatedColumns"
+                        },
+                        {
+                            "name": "MappedFactInternetSource"
+                        },
+                        {
+                            "name": "FilterDatesGreater"
+                        },
+                        {
+                            "name": "CustomJoinCrossJoin"
+                        },
+                        {
+                            "name": "SelectMappedColumns"
+                        },
+                        {
+                            "name": "SalesData"
+                        },
+                        {
+                            "name": "CombiningAllData"
+                        },
+                        {
+                            "name": "RemoveDuplicates"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tSalesOrderID as integer,\n\t\tSalesOrderDetailID as integer,\n\t\tCarrierTrackingNumber as string,\n\t\tOrderQty as short,\n\t\tProductID as integer,\n\t\tSpecialOfferID as integer,\n\t\tUnitPrice as decimal(19,4),\n\t\tUnitPriceDiscountPct as decimal(19,4)\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: '    SELECT [SalesOrderID]\\n        ,[SalesOrderDetailID]\\n        ,[CarrierTrackingNumber]\\n        ,[OrderQty]\\n        ,[ProductID]\\n        ,[UnitPrice]\\n        ,([UnitPriceDiscount]/[UnitPrice])*100 as \"UnitPriceDiscountPct\"\\n    FROM [Sales].[SalesOrderDetail]',\n\tformat: 'query') ~> SalesOrderDetails\nsource(output(\n\t\tSalesOrderID as integer,\n\t\tRevisionNumber as integer,\n\t\tOrderDate as timestamp,\n\t\tDueDate as timestamp,\n\t\tShipDate as timestamp,\n\t\tOnlineOrderFlag as boolean,\n\t\tSalesOrderNumber as string,\n\t\tSalesOrderLineNumber as long,\n\t\tCustomerID as integer,\n\t\tTaxAmt as decimal(19,4),\n\t\tFreight as decimal(19,4)\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT [SalesOrderID]\\n      ,[RevisionNumber]\\n      ,[OrderDate]\\n      ,[DueDate]\\n      ,[ShipDate]\\n      ,[OnlineOrderFlag]\\n      ,[SalesOrderNumber],\\nROW_NUMBER() OVER (PARTITION BY [SalesOrderNumber] ORDER BY SalesOrderNumber) AS SalesOrderLineNumber\\n      ,[CustomerID]\\n      ,[TaxAmt]\\n      ,[Freight]\\n  FROM [Sales].[SalesOrderHeader]',\n\tformat: 'query') ~> SalesOrderHeader\nsource(output(\n\t\tMaxOrderDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_COMMITTED',\n\tquery: 'Select isNull(max(OrderDate),0) as \"MaxOrderDate\" from [dbo].[FactInternetSales]',\n\tformat: 'query') ~> FactTableSourceDW\nsource(output(\n\t\tProductID as integer,\n\t\tProductNumber as string,\n\t\tStandardCost as decimal(19,4)\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: 'SELECT [ProductID]\\n      ,[ProductNumber]\\n      ,[StandardCost]\\n  FROM [Production].[Product]',\n\tformat: 'query') ~> ProductionTable\nSalesOrderDetails, SalesOrderHeader join(SalesOrderDetails@SalesOrderID == SalesOrderHeader@SalesOrderID,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> joinDetailHeader\nCombiningAllData derive(OrderDateKey = toString(OrderDate, 'YYYYMMdd'),\n\t\tDueDateKey = toString(DueDate, 'YYYYMMdd'),\n\t\tProductStandardCost = StandardCost,\n\t\tTotalProductCost = StandardCost - UnitPriceDiscountPct,\n\t\tShipDateKey = toString(ShipDate, 'YYYYMMdd'),\n\t\tExtendedAmount = UnitPrice*OrderQty,\n\t\tSalesAmount = (UnitPrice - UnitPriceDiscountPct)*OrderQty,\n\t\tUnitPriceDiscountPct = 0,\n\t\tDiscountAmount = 0,\n\t\tCustomerPONumber = toString(null()),\n\t\tOrderQuantity = RevisionNumber) ~> AddedCalculatedColumns\nAddedCalculatedColumns select(mapColumn(\n\t\tProductID = SalesData@ProductID,\n\t\tOrderDateKey,\n\t\tDueDateKey,\n\t\tShipDateKey,\n\t\tCustomerKey = CustomerID,\n\t\tSalesOrderNumber,\n\t\tSalesOrderLineNumber,\n\t\tRevisionNumber,\n\t\tOrderQuantity,\n\t\tUnitPrice,\n\t\tExtendedAmount,\n\t\tUnitPriceDiscountPct,\n\t\tDiscountAmount,\n\t\tProductStandardCost,\n\t\tTotalProductCost,\n\t\tSalesAmount,\n\t\tTaxAmt,\n\t\tFreight,\n\t\tCarrierTrackingNumber,\n\t\tCustomerPONumber,\n\t\tOrderDate,\n\t\tDueDate,\n\t\tShipDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> MappedFactInternetSource\nCustomJoinCrossJoin filter(OrderDate > MaxOrderDate) ~> FilterDatesGreater\nMappedFactInternetSource, FactTableSourceDW join(true(),\n\tjoinType:'cross',\n\tbroadcast: 'auto')~> CustomJoinCrossJoin\nFilterDatesGreater select(mapColumn(\n\t\tProductID,\n\t\tOrderDateKey,\n\t\tDueDateKey,\n\t\tShipDateKey,\n\t\tCustomerKey,\n\t\tSalesOrderNumber,\n\t\tSalesOrderLineNumber,\n\t\tRevisionNumber,\n\t\tOrderQuantity,\n\t\tUnitPrice,\n\t\tExtendedAmount,\n\t\tUnitPriceDiscountPct,\n\t\tDiscountAmount,\n\t\tProductStandardCost,\n\t\tTotalProductCost,\n\t\tSalesAmount,\n\t\tTaxAmt,\n\t\tFreight,\n\t\tCarrierTrackingNumber,\n\t\tCustomerPONumber,\n\t\tOrderDate,\n\t\tDueDate,\n\t\tShipDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectMappedColumns\njoinDetailHeader select(mapColumn(\n\t\tSalesOrderID = SalesOrderDetails@SalesOrderID,\n\t\tSalesOrderDetailID,\n\t\tCarrierTrackingNumber,\n\t\tOrderQty,\n\t\tProductID,\n\t\tSpecialOfferID,\n\t\tUnitPrice,\n\t\tUnitPriceDiscountPct,\n\t\tSalesOrderID = SalesOrderHeader@SalesOrderID,\n\t\tRevisionNumber,\n\t\tOrderDate,\n\t\tDueDate,\n\t\tShipDate,\n\t\tOnlineOrderFlag,\n\t\tSalesOrderNumber,\n\t\tSalesOrderLineNumber,\n\t\tCustomerID,\n\t\tTaxAmt,\n\t\tFreight\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SalesData\nSalesData, ProductionTable join(SalesData@ProductID == ProductionTable@ProductID,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> CombiningAllData\nSelectMappedColumns aggregate(groupBy(SalesOrderNumber),\n\teach(match(name!='SalesOrderNumber'), $$ = first($$))) ~> RemoveDuplicates\nRemoveDuplicates sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[('FactInternetSales_'+toString(currentDate(),'ddMMYYYY')+'.csv')],\n\tpartitionBy('hash', 1),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> FactStage"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable1')]",
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable10')]",
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable15')]",
+                "[concat(variables('factoryId'), '/datasets/AdventureWorks2019Products')]",
+                "[concat(variables('factoryId'), '/datasets/FactTableStage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactinternetDWProcessed')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StagedCSVFact",
+                                "type": "DatasetReference"
+                            },
+                            "name": "CSVFactStagedFile"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "FactInternetSalesDW",
+                                "type": "DatasetReference"
+                            },
+                            "name": "FactInternetDW"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "RemovingNullValues"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tProductID as integer,\n\t\tOrderDateKey as integer,\n\t\tDueDateKey as integer,\n\t\tShipDateKey as integer,\n\t\tCustomerKey as integer,\n\t\tSalesOrderNumber as string,\n\t\tSalesOrderLineNumber as integer,\n\t\tRevisionNumber as short,\n\t\tOrderQuantity as integer,\n\t\tUnitPrice as double,\n\t\tExtendedAmount as double,\n\t\tUnitPriceDiscountPct as integer,\n\t\tDiscountAmount as integer,\n\t\tProductStandardCost as double,\n\t\tTotalProductCost as double,\n\t\tSalesAmount as double,\n\t\tTaxAmt as double,\n\t\tFreight as double,\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as timestamp,\n\t\tDueDate as timestamp,\n\t\tShipDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['FactInternetSales_*.csv']) ~> CSVFactStagedFile\nCSVFactStagedFile filter(not(isNull(ProductID))) ~> RemovingNullValues\nRemovingNullValues sink(input(\n\t\tProductKey as integer,\n\t\tOrderDateKey as integer,\n\t\tDueDateKey as integer,\n\t\tShipDateKey as integer,\n\t\tCustomerKey as integer,\n\t\tSalesOrderNumber as string,\n\t\tSalesOrderLineNumber as byte,\n\t\tRevisionNumber as byte,\n\t\tOrderQuantity as short,\n\t\tUnitPrice as decimal(19,4),\n\t\tExtendedAmount as decimal(19,4),\n\t\tUnitPriceDiscountPct as double,\n\t\tDiscountAmount as double,\n\t\tProductStandardCost as decimal(19,4),\n\t\tTotalProductCost as decimal(19,4),\n\t\tSalesAmount as decimal(19,4),\n\t\tTaxAmt as decimal(19,4),\n\t\tFreight as decimal(19,4),\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as timestamp,\n\t\tDueDate as timestamp,\n\t\tShipDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tProductKey = ProductID,\n\t\tOrderDateKey,\n\t\tDueDateKey,\n\t\tShipDateKey,\n\t\tCustomerKey,\n\t\tSalesOrderNumber,\n\t\tSalesOrderLineNumber,\n\t\tRevisionNumber,\n\t\tOrderQuantity,\n\t\tUnitPrice,\n\t\tExtendedAmount,\n\t\tUnitPriceDiscountPct,\n\t\tDiscountAmount,\n\t\tProductStandardCost,\n\t\tTotalProductCost,\n\t\tSalesAmount,\n\t\tTaxAmt,\n\t\tFreight,\n\t\tCarrierTrackingNumber,\n\t\tCustomerPONumber,\n\t\tOrderDate,\n\t\tDueDate,\n\t\tShipDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> FactInternetDW"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/StagedCSVFact')]",
+                "[concat(variables('factoryId'), '/datasets/FactInternetSalesDW')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/UpsertCustomer')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StagedCSVCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimCustomerCSv"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "dboCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "dboCustomer"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "dimCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "dboCustomerDW"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "DWCustomerHash"
+                        },
+                        {
+                            "name": "CustomerHashDW"
+                        },
+                        {
+                            "name": "CustomerHashKey"
+                        },
+                        {
+                            "name": "LookupHashOnKey"
+                        },
+                        {
+                            "name": "ExistsHash"
+                        },
+                        {
+                            "name": "RemoveDuplicateCustKey"
+                        },
+                        {
+                            "name": "RemoveNullValues"
+                        },
+                        {
+                            "name": "AlterRow"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tYearlyIncome as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimCustomer_*.csv']) ~> DimCustomerCSv\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as boolean,\n\t\tBirthDate as date,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tYearlyIncome as decimal(19,4),\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> dboCustomer\ndboCustomer derive(CustomerHash = sha1(iifNull(Title,'')\n+iifNull(FirstName, '')+iifNull(MiddleName,'')+iifNull(LastName,'')\n+iifNull(toString(BirthDate), '')+iifNull(MaritalStatus, '') +iifNull(Suffix,'')\n+iifNull(Gender, '')+ iifNull(EmailAddress,'')+iifNull(toString(YearlyIncome),'')\n+iifNull(AddressLine1,'') + iifNull(AddressLine2,'') + iifNull(Phone,''))) ~> DWCustomerHash\nDWCustomerHash select(mapColumn(\n\t\tCustomerKey,\n\t\tCustomerAlternateKey,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tNameStyle,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tSuffix,\n\t\tGender,\n\t\tEmailAddress,\n\t\tYearlyIncome,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tPhone,\n\t\tCustomerHash\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CustomerHashDW\nRemoveDuplicateCustKey derive(CustomerHash = sha1(iifNull(Title,'')\n+iifNull(FirstName, '')+iifNull(MiddleName,'')+iifNull(LastName,'')\n+iifNull(toString(BirthDate), '')+iifNull(MaritalStatus, '') +iifNull(Suffix,'')\n+iifNull(Gender, '')+ iifNull(EmailAddress,'')+iifNull(toString(YearlyIncome),'')\n+iifNull(AddressLine1,'') + iifNull(AddressLine2,'') + iifNull(Phone,''))) ~> CustomerHashKey\nExistsHash, CustomerHashDW lookup(RemoveDuplicateCustKey@CustomerKey == CustomerHashDW@CustomerKey,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> LookupHashOnKey\nCustomerHashKey, CustomerHashDW exists(CustomerHashKey@CustomerHash == CustomerHashDW@CustomerHash,\n\tnegate:true,\n\tbroadcast: 'auto')~> ExistsHash\nRemoveNullValues aggregate(groupBy(CustomerKey),\n\teach(match(name!='CustomerKey'), $$ = first($$))) ~> RemoveDuplicateCustKey\nDimCustomerCSv filter(not(isNull(CustomerKey))) ~> RemoveNullValues\nLookupHashOnKey alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as boolean,\n\t\tBirthDate as date,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tYearlyIncome as decimal(19,4),\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['CustomerKey'],\n\tformat: 'table',\n\tpreSQLs:['SET IDENTITY_INSERT [dbo].[DimCustomer] ON'],\n\tpostSQLs:['SET IDENTITY_INSERT [dbo].[DimCustomer] OFF'],\n\tmapColumn(\n\t\tCustomerKey = RemoveDuplicateCustKey@CustomerKey,\n\t\tCustomerAlternateKey = RemoveDuplicateCustKey@CustomerAlternateKey,\n\t\tTitle = RemoveDuplicateCustKey@Title,\n\t\tFirstName = RemoveDuplicateCustKey@FirstName,\n\t\tMiddleName = RemoveDuplicateCustKey@MiddleName,\n\t\tLastName = RemoveDuplicateCustKey@LastName,\n\t\tNameStyle = RemoveDuplicateCustKey@NameStyle,\n\t\tBirthDate = RemoveDuplicateCustKey@BirthDate,\n\t\tMaritalStatus = RemoveDuplicateCustKey@MaritalStatus,\n\t\tSuffix = RemoveDuplicateCustKey@Suffix,\n\t\tGender = RemoveDuplicateCustKey@Gender,\n\t\tEmailAddress = RemoveDuplicateCustKey@EmailAddress,\n\t\tYearlyIncome = RemoveDuplicateCustKey@YearlyIncome,\n\t\tAddressLine1 = RemoveDuplicateCustKey@AddressLine1,\n\t\tAddressLine2 = RemoveDuplicateCustKey@AddressLine2,\n\t\tPhone = RemoveDuplicateCustKey@Phone\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> dboCustomerDW"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/StagedCSVCustomer')]",
+                "[concat(variables('factoryId'), '/datasets/dboCustomer')]",
+                "[concat(variables('factoryId'), '/datasets/dimCustomer')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/UpsertProduct')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable15",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimProductsADW"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "DimStaged",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimProductStaged"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable19",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProductSink"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "ProductHash"
+                        },
+                        {
+                            "name": "ProductTabledbo"
+                        },
+                        {
+                            "name": "GenProductHashKey"
+                        },
+                        {
+                            "name": "ExistsHashOnKey"
+                        },
+                        {
+                            "name": "LookupHashOnKey"
+                        },
+                        {
+                            "name": "AlterRow"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tProductKey as integer,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryKey as integer,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as decimal(19,4),\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as decimal(19,4),\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as integer,\n\t\tProductLine as string,\n\t\tDealerPrice as decimal(19,4),\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DimProductsADW\nsource(output(\n\t\tProductKey as short,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryID as short,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as double,\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as double,\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as short,\n\t\tProductLine as string,\n\t\tDealerPrice as double,\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimProducts_*.csv']) ~> DimProductStaged\nDimProductsADW derive(ProductHash = sha1(toString(ProductKey) +\nProductAlternateKey+\niifNull(toString(ProductSubcategoryKey),'')+\niifNull(WeightUnitMeasureCode, '')+\niifNull(SizeUnitMeasureCode,'')+\niifNull(EnglishProductName,'')+\niifNull(toString(StandardCost), '')+\niifNull(toString(FinishedGoodsFlag), '') +\niifNull(Color,'')+\niifNull(toString(SafetyStockLevel), '')+ \niifNull(toString(ReorderPoint,''))+\niifNull(toString(ListPrice)),'')+\niifNull(Size,'') +\niifNull(SizeRange,'') +\niifNull(toString(Weight),'') +\niifNull(toString(DaysToManufacture),'') + \niifNull(toString(ProductLine,''))+ \niifNull(toString(DealerPrice,''))+ \niifNull(Class,'')+iifNull(Style,'') + \niifNull(toString(ModelName),'') +\niifNull(toString(EnglishDescription,'')) + \niifNull(toString(StartDate,''))) ~> ProductHash\nProductHash select(mapColumn(\n\t\tProductKey,\n\t\tProductAlternateKey,\n\t\tProductSubcategoryKey,\n\t\tWeightUnitMeasureCode,\n\t\tSizeUnitMeasureCode,\n\t\tEnglishProductName,\n\t\tStandardCost,\n\t\tFinishedGoodsFlag,\n\t\tColor,\n\t\tSafetyStockLevel,\n\t\tReorderPoint,\n\t\tListPrice,\n\t\tSize,\n\t\tSizeRange,\n\t\tWeight,\n\t\tDaysToManufacture,\n\t\tProductLine,\n\t\tDealerPrice,\n\t\tClass,\n\t\tStyle,\n\t\tModelName,\n\t\tEnglishDescription,\n\t\tStartDate,\n\t\tProductHash\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProductTabledbo\nDimProductStaged derive(ProductHash = sha1(toString(ProductKey) +\nProductAlternateKey+\niifNull(toString(ProductSubcategoryID),'')\n+iifNull(WeightUnitMeasureCode, '')\n+iifNull(SizeUnitMeasureCode,'')\n+iifNull(EnglishProductName,'')\n+iifNull(toString(StandardCost), '')\n+iifNull(toString(FinishedGoodsFlag), '') \n+iifNull(Color,'')\n+iifNull(toString(SafetyStockLevel), '')\n+ iifNull(toString(ReorderPoint,''))\n+iifNull(toString(ListPrice)),'')\n+iifNull(Size,'') + iifNull(SizeRange,'')\n + iifNull(toString(Weight),'') \n + iifNull(toString(DaysToManufacture),'')\n  + iifNull(toString(ProductLine,''))\n  + iifNull(toString(DealerPrice,''))\n  + iifNull(Class,'')\n+iifNull(Style,'') \n+ iifNull(toString(ModelName),'')\n + iifNull(toString(EnglishDescription,''))\n  + iifNull(toString(StartDate,''))) ~> GenProductHashKey\nGenProductHashKey, ProductTabledbo exists(GenProductHashKey@ProductHash == ProductTabledbo@ProductHash,\n\tnegate:true,\n\tbroadcast: 'auto')~> ExistsHashOnKey\nExistsHashOnKey, ProductTabledbo lookup(DimProductStaged@ProductKey == ProductTabledbo@ProductKey,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> LookupHashOnKey\nLookupHashOnKey alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(input(\n\t\tProductKey as integer,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryKey as integer,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as decimal(19,4),\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as decimal(19,4),\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as integer,\n\t\tProductLine as string,\n\t\tDealerPrice as decimal(19,4),\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as timestamp\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['ProductKey'],\n\tformat: 'table',\n\tpreSQLs:['SET IDENTITY_INSERT [dbo].[DimProduct] ON'],\n\tpostSQLs:['SET IDENTITY_INSERT [dbo].[DimProduct] OFF'],\n\tmapColumn(\n\t\tProductKey = DimProductStaged@ProductKey,\n\t\tProductAlternateKey = DimProductStaged@ProductAlternateKey,\n\t\tProductSubcategoryKey = ProductSubcategoryID,\n\t\tWeightUnitMeasureCode = DimProductStaged@WeightUnitMeasureCode,\n\t\tSizeUnitMeasureCode = DimProductStaged@SizeUnitMeasureCode,\n\t\tEnglishProductName = DimProductStaged@EnglishProductName,\n\t\tStandardCost = DimProductStaged@StandardCost,\n\t\tFinishedGoodsFlag = DimProductStaged@FinishedGoodsFlag,\n\t\tColor = DimProductStaged@Color,\n\t\tSafetyStockLevel = DimProductStaged@SafetyStockLevel,\n\t\tReorderPoint = DimProductStaged@ReorderPoint,\n\t\tListPrice = DimProductStaged@ListPrice,\n\t\tSize = DimProductStaged@Size,\n\t\tSizeRange = DimProductStaged@SizeRange,\n\t\tWeight = DimProductStaged@Weight,\n\t\tDaysToManufacture = DimProductStaged@DaysToManufacture,\n\t\tProductLine = DimProductStaged@ProductLine,\n\t\tDealerPrice = DimProductStaged@DealerPrice,\n\t\tClass = DimProductStaged@Class,\n\t\tStyle = DimProductStaged@Style,\n\t\tEnglishDescription = DimProductStaged@EnglishDescription,\n\t\tModelName = DimProductStaged@ModelName,\n\t\tStartDate = DimProductStaged@StartDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProductSink"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable15')]",
+                "[concat(variables('factoryId'), '/datasets/DimStaged')]",
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable19')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactProcessedFolder')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "SalesStageCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "Fact"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedFactInternetSales",
+                                "type": "DatasetReference"
+                            },
+                            "name": "FactInternetSalesProcessed"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['FactInternetSales_*.csv']) ~> Fact\nFact sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[('FactInternetSales_'+toString(currentDate(),'ddMMYYYY')+'.csv')],\n\tpartitionBy('hash', 1),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> FactInternetSalesProcessed"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/SalesStageCSV')]",
+                "[concat(variables('factoryId'), '/datasets/ProcessedFactInternetSales')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProductProcessed')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StageProductCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "StageCSVProduct"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedCSVProduct",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProcessedProduct"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimProducts_*.csv']) ~> StageCSVProduct\nStageCSVProduct sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string,\n\t\tSalesOrderNumber as string,\n\t\tProductID as string,\n\t\tOrderDateKey as string,\n\t\tDueDateKey as string,\n\t\tShipDateKey as string,\n\t\tSalesOrderLineNumber as string,\n\t\tRevisionNumber as string,\n\t\tOrderQuantity as string,\n\t\tUnitPrice as string,\n\t\tExtendedAmount as string,\n\t\tUnitPriceDiscountPct as string,\n\t\tDiscountAmount as string,\n\t\tProductStandardCost as string,\n\t\tTotalProductCost as string,\n\t\tSalesAmount as string,\n\t\tTaxAmt as string,\n\t\tFreight as string,\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as string,\n\t\tDueDate as string,\n\t\tShipDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerKey,\n\t\tCustomerAlternateKey,\n\t\tNameStyle,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tSuffix,\n\t\tEmailAddress,\n\t\tPhone,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tYearlyIncome,\n\t\tGender\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProcessedProduct"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/StageProductCSV')]",
+                "[concat(variables('factoryId'), '/datasets/ProcessedCSVProduct')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProcessedCustomer')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StagedCSVCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "StageCustomer"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedProduct",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProcessedCustomer"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tYearlyIncome as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> StageCustomer\nStageCustomer sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string,\n\t\tSalesOrderNumber as string,\n\t\tProductID as string,\n\t\tOrderDateKey as string,\n\t\tDueDateKey as string,\n\t\tShipDateKey as string,\n\t\tSalesOrderLineNumber as string,\n\t\tRevisionNumber as string,\n\t\tOrderQuantity as string,\n\t\tUnitPrice as string,\n\t\tExtendedAmount as string,\n\t\tUnitPriceDiscountPct as string,\n\t\tDiscountAmount as string,\n\t\tProductStandardCost as string,\n\t\tTotalProductCost as string,\n\t\tSalesAmount as string,\n\t\tTaxAmt as string,\n\t\tFreight as string,\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as string,\n\t\tDueDate as string,\n\t\tShipDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProcessedCustomer"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/StagedCSVCustomer')]",
+                "[concat(variables('factoryId'), '/datasets/ProcessedProduct')]"
+            ]
+        }
+    ]
+}

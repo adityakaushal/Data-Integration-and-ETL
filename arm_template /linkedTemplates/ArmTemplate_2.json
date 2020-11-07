@@ -1,0 +1,584 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "AdityaKaushalADVWorksADF"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/UpsertCustomer')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StagedCSVCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimCustomerCSv"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "dboCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "dboCustomer"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "dimCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "dboCustomerDW"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "DWCustomerHash"
+                        },
+                        {
+                            "name": "CustomerHashDW"
+                        },
+                        {
+                            "name": "CustomerHashKey"
+                        },
+                        {
+                            "name": "LookupHashOnKey"
+                        },
+                        {
+                            "name": "ExistsHash"
+                        },
+                        {
+                            "name": "RemoveDuplicateCustKey"
+                        },
+                        {
+                            "name": "RemoveNullValues"
+                        },
+                        {
+                            "name": "AlterRow"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tYearlyIncome as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimCustomer_*.csv']) ~> DimCustomerCSv\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as boolean,\n\t\tBirthDate as date,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tYearlyIncome as decimal(19,4),\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> dboCustomer\ndboCustomer derive(CustomerHash = sha1(iifNull(Title,'')\n+iifNull(FirstName, '')+iifNull(MiddleName,'')+iifNull(LastName,'')\n+iifNull(toString(BirthDate), '')+iifNull(MaritalStatus, '') +iifNull(Suffix,'')\n+iifNull(Gender, '')+ iifNull(EmailAddress,'')+iifNull(toString(YearlyIncome),'')\n+iifNull(AddressLine1,'') + iifNull(AddressLine2,'') + iifNull(Phone,''))) ~> DWCustomerHash\nDWCustomerHash select(mapColumn(\n\t\tCustomerKey,\n\t\tCustomerAlternateKey,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tNameStyle,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tSuffix,\n\t\tGender,\n\t\tEmailAddress,\n\t\tYearlyIncome,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tPhone,\n\t\tCustomerHash\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CustomerHashDW\nRemoveDuplicateCustKey derive(CustomerHash = sha1(iifNull(Title,'')\n+iifNull(FirstName, '')+iifNull(MiddleName,'')+iifNull(LastName,'')\n+iifNull(toString(BirthDate), '')+iifNull(MaritalStatus, '') +iifNull(Suffix,'')\n+iifNull(Gender, '')+ iifNull(EmailAddress,'')+iifNull(toString(YearlyIncome),'')\n+iifNull(AddressLine1,'') + iifNull(AddressLine2,'') + iifNull(Phone,''))) ~> CustomerHashKey\nExistsHash, CustomerHashDW lookup(RemoveDuplicateCustKey@CustomerKey == CustomerHashDW@CustomerKey,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> LookupHashOnKey\nCustomerHashKey, CustomerHashDW exists(CustomerHashKey@CustomerHash == CustomerHashDW@CustomerHash,\n\tnegate:true,\n\tbroadcast: 'auto')~> ExistsHash\nRemoveNullValues aggregate(groupBy(CustomerKey),\n\teach(match(name!='CustomerKey'), $$ = first($$))) ~> RemoveDuplicateCustKey\nDimCustomerCSv filter(not(isNull(CustomerKey))) ~> RemoveNullValues\nLookupHashOnKey alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as boolean,\n\t\tBirthDate as date,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tYearlyIncome as decimal(19,4),\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['CustomerKey'],\n\tformat: 'table',\n\tpreSQLs:['SET IDENTITY_INSERT [dbo].[DimCustomer] ON'],\n\tpostSQLs:['SET IDENTITY_INSERT [dbo].[DimCustomer] OFF'],\n\tmapColumn(\n\t\tCustomerKey = RemoveDuplicateCustKey@CustomerKey,\n\t\tCustomerAlternateKey = RemoveDuplicateCustKey@CustomerAlternateKey,\n\t\tTitle = RemoveDuplicateCustKey@Title,\n\t\tFirstName = RemoveDuplicateCustKey@FirstName,\n\t\tMiddleName = RemoveDuplicateCustKey@MiddleName,\n\t\tLastName = RemoveDuplicateCustKey@LastName,\n\t\tNameStyle = RemoveDuplicateCustKey@NameStyle,\n\t\tBirthDate = RemoveDuplicateCustKey@BirthDate,\n\t\tMaritalStatus = RemoveDuplicateCustKey@MaritalStatus,\n\t\tSuffix = RemoveDuplicateCustKey@Suffix,\n\t\tGender = RemoveDuplicateCustKey@Gender,\n\t\tEmailAddress = RemoveDuplicateCustKey@EmailAddress,\n\t\tYearlyIncome = RemoveDuplicateCustKey@YearlyIncome,\n\t\tAddressLine1 = RemoveDuplicateCustKey@AddressLine1,\n\t\tAddressLine2 = RemoveDuplicateCustKey@AddressLine2,\n\t\tPhone = RemoveDuplicateCustKey@Phone\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> dboCustomerDW"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/UpsertProduct')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable15",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimProductsADW"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "DimStaged",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DimProductStaged"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable19",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProductSink"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "ProductHash"
+                        },
+                        {
+                            "name": "ProductTabledbo"
+                        },
+                        {
+                            "name": "GenProductHashKey"
+                        },
+                        {
+                            "name": "ExistsHashOnKey"
+                        },
+                        {
+                            "name": "LookupHashOnKey"
+                        },
+                        {
+                            "name": "AlterRow"
+                        }
+                    ],
+                    "script": "source(output(\n\t\tProductKey as integer,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryKey as integer,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as decimal(19,4),\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as decimal(19,4),\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as integer,\n\t\tProductLine as string,\n\t\tDealerPrice as decimal(19,4),\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DimProductsADW\nsource(output(\n\t\tProductKey as short,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryID as short,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as double,\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as double,\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as short,\n\t\tProductLine as string,\n\t\tDealerPrice as double,\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimProducts_*.csv']) ~> DimProductStaged\nDimProductsADW derive(ProductHash = sha1(toString(ProductKey) +\nProductAlternateKey+\niifNull(toString(ProductSubcategoryKey),'')+\niifNull(WeightUnitMeasureCode, '')+\niifNull(SizeUnitMeasureCode,'')+\niifNull(EnglishProductName,'')+\niifNull(toString(StandardCost), '')+\niifNull(toString(FinishedGoodsFlag), '') +\niifNull(Color,'')+\niifNull(toString(SafetyStockLevel), '')+ \niifNull(toString(ReorderPoint,''))+\niifNull(toString(ListPrice)),'')+\niifNull(Size,'') +\niifNull(SizeRange,'') +\niifNull(toString(Weight),'') +\niifNull(toString(DaysToManufacture),'') + \niifNull(toString(ProductLine,''))+ \niifNull(toString(DealerPrice,''))+ \niifNull(Class,'')+iifNull(Style,'') + \niifNull(toString(ModelName),'') +\niifNull(toString(EnglishDescription,'')) + \niifNull(toString(StartDate,''))) ~> ProductHash\nProductHash select(mapColumn(\n\t\tProductKey,\n\t\tProductAlternateKey,\n\t\tProductSubcategoryKey,\n\t\tWeightUnitMeasureCode,\n\t\tSizeUnitMeasureCode,\n\t\tEnglishProductName,\n\t\tStandardCost,\n\t\tFinishedGoodsFlag,\n\t\tColor,\n\t\tSafetyStockLevel,\n\t\tReorderPoint,\n\t\tListPrice,\n\t\tSize,\n\t\tSizeRange,\n\t\tWeight,\n\t\tDaysToManufacture,\n\t\tProductLine,\n\t\tDealerPrice,\n\t\tClass,\n\t\tStyle,\n\t\tModelName,\n\t\tEnglishDescription,\n\t\tStartDate,\n\t\tProductHash\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProductTabledbo\nDimProductStaged derive(ProductHash = sha1(toString(ProductKey) +\nProductAlternateKey+\niifNull(toString(ProductSubcategoryID),'')\n+iifNull(WeightUnitMeasureCode, '')\n+iifNull(SizeUnitMeasureCode,'')\n+iifNull(EnglishProductName,'')\n+iifNull(toString(StandardCost), '')\n+iifNull(toString(FinishedGoodsFlag), '') \n+iifNull(Color,'')\n+iifNull(toString(SafetyStockLevel), '')\n+ iifNull(toString(ReorderPoint,''))\n+iifNull(toString(ListPrice)),'')\n+iifNull(Size,'') + iifNull(SizeRange,'')\n + iifNull(toString(Weight),'') \n + iifNull(toString(DaysToManufacture),'')\n  + iifNull(toString(ProductLine,''))\n  + iifNull(toString(DealerPrice,''))\n  + iifNull(Class,'')\n+iifNull(Style,'') \n+ iifNull(toString(ModelName),'')\n + iifNull(toString(EnglishDescription,''))\n  + iifNull(toString(StartDate,''))) ~> GenProductHashKey\nGenProductHashKey, ProductTabledbo exists(GenProductHashKey@ProductHash == ProductTabledbo@ProductHash,\n\tnegate:true,\n\tbroadcast: 'auto')~> ExistsHashOnKey\nExistsHashOnKey, ProductTabledbo lookup(DimProductStaged@ProductKey == ProductTabledbo@ProductKey,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> LookupHashOnKey\nLookupHashOnKey alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(input(\n\t\tProductKey as integer,\n\t\tProductAlternateKey as string,\n\t\tProductSubcategoryKey as integer,\n\t\tWeightUnitMeasureCode as string,\n\t\tSizeUnitMeasureCode as string,\n\t\tEnglishProductName as string,\n\t\tStandardCost as decimal(19,4),\n\t\tFinishedGoodsFlag as boolean,\n\t\tColor as string,\n\t\tSafetyStockLevel as short,\n\t\tReorderPoint as short,\n\t\tListPrice as decimal(19,4),\n\t\tSize as string,\n\t\tSizeRange as string,\n\t\tWeight as double,\n\t\tDaysToManufacture as integer,\n\t\tProductLine as string,\n\t\tDealerPrice as decimal(19,4),\n\t\tClass as string,\n\t\tStyle as string,\n\t\tModelName as string,\n\t\tEnglishDescription as string,\n\t\tStartDate as timestamp\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['ProductKey'],\n\tformat: 'table',\n\tpreSQLs:['SET IDENTITY_INSERT [dbo].[DimProduct] ON'],\n\tpostSQLs:['SET IDENTITY_INSERT [dbo].[DimProduct] OFF'],\n\tmapColumn(\n\t\tProductKey = DimProductStaged@ProductKey,\n\t\tProductAlternateKey = DimProductStaged@ProductAlternateKey,\n\t\tProductSubcategoryKey = ProductSubcategoryID,\n\t\tWeightUnitMeasureCode = DimProductStaged@WeightUnitMeasureCode,\n\t\tSizeUnitMeasureCode = DimProductStaged@SizeUnitMeasureCode,\n\t\tEnglishProductName = DimProductStaged@EnglishProductName,\n\t\tStandardCost = DimProductStaged@StandardCost,\n\t\tFinishedGoodsFlag = DimProductStaged@FinishedGoodsFlag,\n\t\tColor = DimProductStaged@Color,\n\t\tSafetyStockLevel = DimProductStaged@SafetyStockLevel,\n\t\tReorderPoint = DimProductStaged@ReorderPoint,\n\t\tListPrice = DimProductStaged@ListPrice,\n\t\tSize = DimProductStaged@Size,\n\t\tSizeRange = DimProductStaged@SizeRange,\n\t\tWeight = DimProductStaged@Weight,\n\t\tDaysToManufacture = DimProductStaged@DaysToManufacture,\n\t\tProductLine = DimProductStaged@ProductLine,\n\t\tDealerPrice = DimProductStaged@DealerPrice,\n\t\tClass = DimProductStaged@Class,\n\t\tStyle = DimProductStaged@Style,\n\t\tEnglishDescription = DimProductStaged@EnglishDescription,\n\t\tModelName = DimProductStaged@ModelName,\n\t\tStartDate = DimProductStaged@StartDate\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProductSink"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactProcessedFolder')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "SalesStageCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "Fact"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedFactInternetSales",
+                                "type": "DatasetReference"
+                            },
+                            "name": "FactInternetSalesProcessed"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['FactInternetSales_*.csv']) ~> Fact\nFact sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[('FactInternetSales_'+toString(currentDate(),'ddMMYYYY')+'.csv')],\n\tpartitionBy('hash', 1),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> FactInternetSalesProcessed"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProductProcessed')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StageProductCSV",
+                                "type": "DatasetReference"
+                            },
+                            "name": "StageCSVProduct"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedCSVProduct",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProcessedProduct"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\twildcardPaths:['DimProducts_*.csv']) ~> StageCSVProduct\nStageCSVProduct sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string,\n\t\tSalesOrderNumber as string,\n\t\tProductID as string,\n\t\tOrderDateKey as string,\n\t\tDueDateKey as string,\n\t\tShipDateKey as string,\n\t\tSalesOrderLineNumber as string,\n\t\tRevisionNumber as string,\n\t\tOrderQuantity as string,\n\t\tUnitPrice as string,\n\t\tExtendedAmount as string,\n\t\tUnitPriceDiscountPct as string,\n\t\tDiscountAmount as string,\n\t\tProductStandardCost as string,\n\t\tTotalProductCost as string,\n\t\tSalesAmount as string,\n\t\tTaxAmt as string,\n\t\tFreight as string,\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as string,\n\t\tDueDate as string,\n\t\tShipDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tmapColumn(\n\t\tCustomerKey,\n\t\tCustomerAlternateKey,\n\t\tNameStyle,\n\t\tTitle,\n\t\tFirstName,\n\t\tMiddleName,\n\t\tLastName,\n\t\tSuffix,\n\t\tEmailAddress,\n\t\tPhone,\n\t\tAddressLine1,\n\t\tAddressLine2,\n\t\tBirthDate,\n\t\tMaritalStatus,\n\t\tYearlyIncome,\n\t\tGender\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProcessedProduct"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ProcessedCustomer')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "StagedCSVCustomer",
+                                "type": "DatasetReference"
+                            },
+                            "name": "StageCustomer"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ProcessedProduct",
+                                "type": "DatasetReference"
+                            },
+                            "name": "ProcessedCustomer"
+                        }
+                    ],
+                    "transformations": [],
+                    "script": "source(output(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tNameStyle as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tSuffix as string,\n\t\tGender as string,\n\t\tEmailAddress as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tYearlyIncome as string,\n\t\tPhone as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false) ~> StageCustomer\nStageCustomer sink(input(\n\t\tCustomerKey as string,\n\t\tCustomerAlternateKey as string,\n\t\tNameStyle as string,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tAddressLine1 as string,\n\t\tAddressLine2 as string,\n\t\tBirthDate as string,\n\t\tMaritalStatus as string,\n\t\tYearlyIncome as string,\n\t\tGender as string,\n\t\tSalesOrderNumber as string,\n\t\tProductID as string,\n\t\tOrderDateKey as string,\n\t\tDueDateKey as string,\n\t\tShipDateKey as string,\n\t\tSalesOrderLineNumber as string,\n\t\tRevisionNumber as string,\n\t\tOrderQuantity as string,\n\t\tUnitPrice as string,\n\t\tExtendedAmount as string,\n\t\tUnitPriceDiscountPct as string,\n\t\tDiscountAmount as string,\n\t\tProductStandardCost as string,\n\t\tTotalProductCost as string,\n\t\tSalesAmount as string,\n\t\tTaxAmt as string,\n\t\tFreight as string,\n\t\tCarrierTrackingNumber as string,\n\t\tCustomerPONumber as string,\n\t\tOrderDate as string,\n\t\tDueDate as string,\n\t\tShipDate as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ProcessedCustomer"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/FactInternetSales')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "FactTable",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactSalesDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "SalesOrderDetails": {},
+                                    "SalesOrderHeader": {},
+                                    "FactTableSourceDW": {},
+                                    "ProductionTable": {},
+                                    "FactStage": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "FactDWProcessed",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "FactTable",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactinternetDWProcessed",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "CSVFactStagedFile": {},
+                                    "FactInternetDW": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "FactProcessFolder",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "FactDWProcessed",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "FactProcessedFolder",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "Fact": {},
+                                    "FactInternetSalesProcessed": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-01T18:42:54Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/FactProcessedFolder')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimCustomer')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "CustomerDimension",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "DimCustomerDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "SalesCustomer": {},
+                                    "SalesVCustomer": {},
+                                    "SalesDemo": {},
+                                    "DimCustStageCsv": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "UpsertCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "CustomerDimension",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "UpsertCustomer",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "DimCustomerCSv": {},
+                                    "dboCustomer": {},
+                                    "dboCustomerDW": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ProcessedCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "UpsertCustomer",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "ProcessedCustomer",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "StageCustomer": {},
+                                    "ProcessedCustomer": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-02T09:24:00Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/UpsertCustomer')]",
+                "[concat(variables('factoryId'), '/dataflows/ProcessedCustomer')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DimProducts')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "ProductsDimension",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "DimProductDF",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "Product": {},
+                                    "ProductDescription": {},
+                                    "DimProductsCSV": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "UpsertProduct",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "ProductsDimension",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "UpsertProduct",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "DimProductsADW": {},
+                                    "DimProductStaged": {},
+                                    "ProductSink": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ProcessedCustomer",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "UpsertProduct",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "ProductProcessed",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "StageCSVProduct": {},
+                                    "ProcessedProduct": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            }
+                        }
+                    }
+                ],
+                "annotations": [],
+                "lastPublishTime": "2020-09-02T09:24:00Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/UpsertProduct')]",
+                "[concat(variables('factoryId'), '/dataflows/ProductProcessed')]"
+            ]
+        }
+    ]
+}
